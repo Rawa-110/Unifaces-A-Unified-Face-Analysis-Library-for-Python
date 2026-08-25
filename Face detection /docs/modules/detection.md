@@ -10,6 +10,8 @@ Face detection is the first step in any face-analysis pipeline. UniFace provides
 - BlazeFace
 
 ---
+<img width="606" height="404" alt="image" src="https://github.com/user-attachments/assets/166f217b-c135-4ff1-afdc-45ab4a5e4360" />
+
 
 ## Available Models
 
