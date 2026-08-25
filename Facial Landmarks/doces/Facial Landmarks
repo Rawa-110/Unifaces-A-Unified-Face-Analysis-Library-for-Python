@@ -1,65 +1,358 @@
-Facial landmark detection identifies important points on a face and returns their coordinates in the image. These points can be used for face alignment, expression analysis, blink detection, head-pose estimation, face geometry, and other computer-vision tasks.
+🧑‍💻 Face Recognition & Landmarks
 
-UniFace supports several landmark models, ranging from lightweight 5-point detection to dense 3D face meshes.
+UniFace provides a complete face analysis pipeline, including face detection, facial landmarks, face alignment, face recognition, embeddings, face verification, and face search.
 
-Available Landmark Models
+🔍 Face Recognition
 
-| Model                      | Number of Points | Dimensions  |   Size |
-| -------------------------- | ---------------: | ----------- | -----: |
-| **Landmark106**            |              106 | 2D          |  14 MB |
-| **PIPNet (WFLW)**          |               98 | 2D          |  47 MB |
-| **PIPNet (300W + CelebA)** |               68 | 2D          |  46 MB |
-| **FaceMesh V1**            |              468 | 3D          | 2.4 MB |
-| **FaceMesh V2**            |              478 | 3D + irises | 4.6 MB |
+Face recognition models extract a numerical representation of a face called an embedding. These embeddings can be used to compare faces, verify identities, or search for a person in a database.
 
+Model	Backbone	Size	Embedding Dim
+🟣 AdaFace	IR-18 / IR-101	92–249 MB	512
+🔵 ArcFace	MobileNet / ResNet	8–166 MB	512
+🟢 EdgeFace	EdgeNeXt / LoRA	5–70 MB	512
+🟡 MobileFace	MobileNet V2 / V3	1–10 MB	512
+🔴 SphereFace	Sphere20 / 36	50–92 MB	512
+🟣 AdaFace
 
-The appropriate model depends on the required level of detail. For example, 5-point landmarks are sufficient for basic face alignment, while 106-point or dense Face Mesh models are better suited for detailed facial analysis.
+Face recognition using an adaptive margin based on image quality.
 
-5-Point Facial Landmarks
-
-The built-in face detectors provide a basic set of five facial landmarks that can be used for alignment and recognition.
-
-The five points represent:
-
-Left eye
-Right eye
-Nose
-Left mouth corner
-Right mouth corner
-
-The following detectors provide these five points:
-
-RetinaFace
-SCRFD
-CenterFace
-YOLOv5-Face
-YOLOv8-Face
-
-BlazeFace is different because it produces six MediaPipe keypoints instead of the standard five-point alignment template.
-
-Example
+Basic Usage
 from uniface.detection import RetinaFace
+from uniface.recognition import AdaFace
 
 detector = RetinaFace()
+recognizer = AdaFace()
+
 faces = detector.detect(image)
 
 if faces:
-    landmarks = faces[0].landmarks
+    embedding = recognizer.get_normalized_embedding(
+        image,
+        faces[0].landmarks
+    )
 
-    print(landmarks.shape)  # (5, 2)
+    print(f"Embedding shape: {embedding.shape}")  # (512,)
+Model Variants
+from uniface.constants import AdaFaceWeights
 
-    left_eye = landmarks[0]
-    right_eye = landmarks[1]
-    nose = landmarks[2]
-    left_mouth = landmarks[3]
-    right_mouth = landmarks[4]
-hese landmarks are commonly used as input for the face-alignment stage of recognition pipelines.
+# Lightweight
+recognizer = AdaFace(
+    model_name=AdaFaceWeights.IR_18
+)
 
-Landmark106
+# High accuracy
+recognizer = AdaFace(
+    model_name=AdaFaceWeights.IR_101
+)
 
-Landmark106 provides 106 detailed 2D facial landmarks. Compared with the basic five-point template, it provides considerably more information about the face contour and individual facial regions.
+# CPU execution
+recognizer = AdaFace(
+    providers=['CPUExecutionProvider']
+)
+Variant	Dataset	Size	IJB-B	IJB-C
+IR_18	WebFace4M	92 MB	93.03%	94.99%
+IR_101	WebFace12M	249 MB	—	97.66%
+🔵 ArcFace
 
-Basic Example
+Face recognition using Additive Angular Margin Loss.
+
+Basic Usage
+from uniface.detection import RetinaFace
+from uniface.recognition import ArcFace
+
+detector = RetinaFace()
+recognizer = ArcFace()
+
+faces = detector.detect(image)
+
+if faces:
+    embedding = recognizer.get_normalized_embedding(
+        image,
+        faces[0].landmarks
+    )
+
+    print(f"Embedding shape: {embedding.shape}")  # (512,)
+Model Variants
+from uniface.constants import ArcFaceWeights
+
+# Lightweight
+recognizer = ArcFace(
+    model_name=ArcFaceWeights.MNET
+)
+
+# High accuracy
+recognizer = ArcFace(
+    model_name=ArcFaceWeights.RESNET
+)
+
+# CPU execution
+recognizer = ArcFace(
+    providers=['CPUExecutionProvider']
+)
+Variant	Backbone	Size	LFW	CFP-FP	AgeDB-30	IJB-C
+MNET	MobileNet	8 MB	99.70%	98.00%	96.58%	95.02%
+RESNET	ResNet50	166 MB	99.83%	99.33%	98.23%	97.25%
+🟢 EdgeFace
+
+An efficient face recognition model designed for edge devices, using an EdgeNeXt backbone with optional LoRA compression.
+
+from uniface.detection import RetinaFace
+from uniface.recognition import EdgeFace
+
+detector = RetinaFace()
+recognizer = EdgeFace()
+
+faces = detector.detect(image)
+
+if faces:
+    embedding = recognizer.get_normalized_embedding(
+        image,
+        faces[0].landmarks
+    )
+
+    print(f"Embedding shape: {embedding.shape}")  # (512,)
+Model Variants
+from uniface.constants import EdgeFaceWeights
+
+# Ultra-compact
+recognizer = EdgeFace(
+    model_name=EdgeFaceWeights.XXS
+)
+
+# Compact
+recognizer = EdgeFace(
+    model_name=EdgeFaceWeights.XS_GAMMA_06
+)
+
+# Small
+recognizer = EdgeFace(
+    model_name=EdgeFaceWeights.S_GAMMA_05
+)
+
+# Full-size
+recognizer = EdgeFace(
+    model_name=EdgeFaceWeights.BASE
+)
+Variant	Params	MFLOPs	Size	LFW	CALFW	CPLFW
+XXS	1.24M	94	~5 MB	99.57%	94.83%	90.27%
+XS_GAMMA_06	1.77M	154	~7 MB	99.73%	95.28%	91.58%
+S_GAMMA_05	3.65M	306	~14 MB	99.78%	95.55%	92.48%
+BASE	18.2M	1399	~70 MB	99.83%	96.07%	93.75%
+🟡 MobileFace
+
+Lightweight face recognition models based on MobileNet, suitable for applications where model size and inference speed are important.
+
+from uniface.recognition import MobileFace
+
+recognizer = MobileFace()
+
+embedding = recognizer.get_normalized_embedding(
+    image,
+    landmarks
+)
+Model Variants
+from uniface.constants import MobileFaceWeights
+
+# Ultra-lightweight
+recognizer = MobileFace(
+    model_name=MobileFaceWeights.MNET_025
+)
+
+# Balanced
+recognizer = MobileFace(
+    model_name=MobileFaceWeights.MNET_V2
+)
+
+# Higher accuracy
+recognizer = MobileFace(
+    model_name=MobileFaceWeights.MNET_V3_LARGE
+)
+Variant	Params	Size	LFW	CALFW	CPLFW	AgeDB-30
+MNET_025	0.36M	1 MB	98.76%	92.02%	82.37%	90.02%
+MNET_V2	2.29M	4 MB	99.55%	94.87%	86.89%	95.16%
+MNET_V3_SMALL	1.25M	3 MB	99.30%	93.77%	85.29%	92.79%
+MNET_V3_LARGE	3.52M	10 MB	99.53%	94.56%	86.79%	95.13%
+🔴 SphereFace
+
+Face recognition using Angular Softmax Loss (A-Softmax).
+
+from uniface.recognition import SphereFace
+from uniface.constants import SphereFaceWeights
+
+recognizer = SphereFace(
+    model_name=SphereFaceWeights.SPHERE20
+)
+
+embedding = recognizer.get_normalized_embedding(
+    image,
+    landmarks
+)
+Variant	Params	Size	LFW	CALFW	CPLFW	AgeDB-30
+SPHERE20	24.5M	50 MB	99.67%	95.61%	88.75%	96.58%
+SPHERE36	34.6M	92 MB	99.72%	95.64%	89.92%	96.83%
+🧮 Face Comparison
+
+After extracting embeddings, you can calculate the similarity between two faces.
+
+from uniface.face_utils import compute_similarity
+import numpy as np
+
+emb1 = recognizer.get_normalized_embedding(
+    image1,
+    landmarks1
+)
+
+emb2 = recognizer.get_normalized_embedding(
+    image2,
+    landmarks2
+)
+
+similarity = compute_similarity(emb1, emb2)
+
+print(f"Similarity: {similarity:.4f}")
+
+Since the embeddings are L2-normalized, similarity can also be calculated directly:
+
+similarity = np.dot(emb1, emb2)
+📊 Similarity Threshold
+Similarity	Decision	Use Case
+> 0.70	🟢 Very high confidence	Security-critical applications
+> 0.60	🟢 Same person	General verification
+0.40–0.60	🟡 Uncertain	Manual review
+< 0.40	🔴 Different person	Rejection
+
+⚠️ The threshold should be calibrated for the selected recognition model and application.
+
+🎯 Face Alignment
+
+Recognition models require aligned faces for reliable embeddings.
+
+UniFace performs alignment automatically when extracting an embedding:
+
+embedding = recognizer.get_normalized_embedding(
+    image,
+    landmarks
+)
+
+Alignment can also be performed manually:
+
+from uniface.face_utils import face_alignment
+
+aligned_face, inverse_matrix = face_alignment(
+    image,
+    landmarks
+)
+
+The function returns:
+
+🖼️ aligned_face — normalized 112 × 112 face image
+🔄 inverse_matrix — transformation matrix used to map coordinates back to the original image
+🗃️ Building a Face Database
+
+Face embeddings can be stored and reused to create a simple face database.
+
+import cv2
+import numpy as np
+
+from uniface.detection import RetinaFace
+from uniface.recognition import ArcFace
+
+detector = RetinaFace()
+recognizer = ArcFace()
+
+database = {}
+
+for person_id, image_path in person_images.items():
+
+    image = cv2.imread(image_path)
+
+    faces = detector.detect(image)
+
+    if not faces:
+        continue
+
+    face = faces[0]
+
+    embedding = recognizer.get_normalized_embedding(
+        image,
+        face.landmarks
+    )
+
+    database[person_id] = embedding
+💾 Save the Database
+np.savez(
+    "face_database.npz",
+    **database
+)
+📂 Load the Database
+data = np.load("face_database.npz")
+
+database = {
+    key: data[key]
+    for key in data.files
+}
+🔎 Face Search
+
+Search for the closest identity in the database.
+
+def search_face(
+    query_embedding,
+    database,
+    threshold=0.6
+):
+    """Return the closest identity above the threshold."""
+
+    best_match = None
+    best_similarity = -1.0
+
+    for person_id, db_embedding in database.items():
+
+        similarity = np.dot(
+            query_embedding,
+            db_embedding
+        )
+
+        if (
+            similarity > best_similarity
+            and similarity > threshold
+        ):
+            best_similarity = similarity
+            best_match = person_id
+
+    return best_match, best_similarity
+Example
+query_embedding = recognizer.get_normalized_embedding(
+    query_image,
+    landmarks
+)
+
+match, similarity = search_face(
+    query_embedding,
+    database
+)
+
+if match is not None:
+
+    print(
+        f"Match: {match} "
+        f"(similarity: {similarity:.4f})"
+    )
+
+else:
+
+    print("No matching face was found.")
+📍 Facial Landmarks
+
+Facial landmarks provide precise locations of important facial features such as the eyes, nose, mouth, eyebrows, and face contour.
+
+Available Models
+Model	Points	Type	Size
+🔵 Landmark106	106	2D	14 MB
+🟢 PIPNet WFLW	98	2D	47 MB
+🟡 PIPNet 300W + CelebA	68	2D	46 MB
+🔴 FaceMesh V1	468	3D	2.4 MB
+🟣 FaceMesh V2	478	3D + Iris	4.6 MB
+🔵 Landmark106
 from uniface.detection import RetinaFace
 from uniface.landmark import Landmark106
 
@@ -69,66 +362,41 @@ landmarker = Landmark106()
 faces = detector.detect(image)
 
 if faces:
+
     landmarks = landmarker.get_landmarks(
         image,
         faces[0].bbox
     )
 
-    print(f"Landmarks shape: {landmarks.shape}")
-    # (106, 2)
-Each landmark is represented by an (x, y) coordinate in the original image.
-
-Landmark106 Point Groups
-
-The 106 points are organized into several facial regions:
-
-Index Range	Facial Region	Points
-0–32	Face contour	33
+    print(
+        f"Landmarks shape: {landmarks.shape}"
+    )  # (106, 2)
+Landmark Groups
+Range	Group	Points
+0–32	Face Contour	33
 33–50	Eyebrows	18
 51–62	Nose	12
 63–86	Eyes	24
 87–105	Mouth	19
-
-Extracting Facial Regions
-landmarks = landmarker.get_landmarks(
-    image,
-    face.bbox
-)
-
-# Face outline
+Extract Specific Features
 contour = landmarks[0:33]
 
-# Left eyebrow
 left_eyebrow = landmarks[33:42]
 
-# Right eyebrow
 right_eyebrow = landmarks[42:51]
 
-# Nose
 nose = landmarks[51:63]
 
-# Left eye
 left_eye = landmarks[63:72]
 
-# Right eye
 right_eye = landmarks[76:84]
 
-# Mouth
 mouth = landmarks[87:106]
-PIPNet
+🟢 PIPNet — 98 / 68 Points
 
-PIPNet, or Pixel-in-Pixel Net, is a high-precision facial landmark model available in two configurations.
+PIPNet is a high-accuracy facial landmark detector.
 
-Both versions use a ResNet-18 backbone and process a 256 × 256 input image. The main difference is the number of landmarks and the dataset used during training.
-
-UniFace provides:
-
-98-point WFLW model
-68-point 300W + CelebA model
 98-Point Model
-
-The 98-point model is the default PIPNet configuration.
-
 from uniface.detection import RetinaFace
 from uniface.landmark import PIPNet
 
@@ -138,17 +406,14 @@ landmarker = PIPNet()
 faces = detector.detect(image)
 
 if faces:
+
     landmarks = landmarker.get_landmarks(
         image,
         faces[0].bbox
     )
 
-    print(landmarks.shape)
-    # (98, 2)
-68-Point PIPNet
-
-The alternative PIPNet model produces 68 landmarks and is trained using the 300W + CelebA dataset.
-
+    print(landmarks.shape)  # (98, 2)
+68-Point Model
 from uniface.constants import PIPNetWeights
 from uniface.landmark import PIPNet
 
@@ -161,47 +426,11 @@ landmarks = landmarker.get_landmarks(
     face.bbox
 )
 
-print(landmarks.shape)
-# (68, 2)
-Choosing Between 98 and 68 Points
+print(landmarks.shape)  # (68, 2)
+🕸️ FaceMesh — 468 / 478 Points
 
-The 68-point model provides a more traditional landmark layout, while the 98-point WFLW model generally provides a tighter representation of the facial boundary.
+FaceMesh provides dense 3D facial landmarks.
 
-For applications where an accurate face outline is important, the 98-point WFLW or 106-point model is usually preferable.
-
-PIPNet Implementation Notes
-
-A few details are handled internally by UniFace:
-
-The number of output landmarks is determined automatically from the ONNX model.
-The appropriate mean-face configuration is selected automatically.
-No num_lms parameter is required.
-The input face crop uses an asymmetric margin around the detected bounding box.
-ImageNet normalization is applied internally.
-Landmark coordinates are returned in the original image coordinate system.
-Output values are represented as float32.
-
-This means the user does not need to manually implement the preprocessing pipeline.
-
-Face Mesh
-
-For applications requiring much denser facial geometry, UniFace includes a MediaPipe-compatible Face Mesh implementation.
-
-Two configurations are available:
-
-Version	Points	Output	Size
-V1_468	468	3D	2.4 MB
-V2_478	478	3D + iris landmarks	4.6 MB
-
-Unlike the 2D landmark models, Face Mesh returns three coordinates:
-
-(x, y, z)
-
-where x and y correspond to image coordinates and z represents relative depth.
-
-Face Mesh Basic Usage
-
-Face Mesh can work with a detector such as SCRFD:
 from uniface import SCRFD, FaceMesh
 
 detector = SCRFD()
@@ -214,34 +443,12 @@ results = mesher.predict(
     faces
 )
 
-result = results[0]
+results[0].landmarks.shape  # (468, 3)
+results[0].points_2d.shape  # (468, 2)
+results[0].score             # [0, 1]
+👁️ 478-Point FaceMesh
 
-print(result.landmarks.shape)
-# (468, 3)
-
-print(result.points_2d.shape)
-# (468, 2)
-
-print(result.score)
-
-he model processes all detected faces in a single prediction call.
-
-Using Face Mesh Without a Detector
-
-A detector is not mandatory. Bounding boxes can be provided directly:
-
-results = mesher.predict(
-    image,
-    bboxes=[
-        [x1, y1, x2, y2]
-    ]
-)
-
-This is useful when face locations are already available from another detection or tracking system.
-
-Face Mesh with Iris Landmarks
-
-The V2_478 configuration extends the standard 468-point mesh by adding iris landmarks.
+The V2_478 model adds iris landmarks.
 
 from uniface import SCRFD, FaceMesh
 from uniface.constants import FaceMeshWeights
@@ -251,192 +458,121 @@ from uniface.landmark import (
     NUM_MESH_LANDMARKS
 )
 
-detector = SCRFD()
-
 mesher = FaceMesh(
     model_name=FaceMeshWeights.V2_478
 )
 
-faces = detector.detect(image)
-
 result = mesher.predict(
     image,
-    faces
+    SCRFD().detect(image)
 )[0]
 
 print(result.landmarks.shape)
 # (478, 3)
+📌 5-Point Landmarks
 
-The first 468 points correspond to the standard mesh:
+All detection models except BlazeFace provide five facial landmarks:
 
-mesh_points = result.landmarks[
-    :NUM_MESH_LANDMARKS
-]
+👁️ Left eye
+👁️ Right eye
+👃 Nose
+👄 Left mouth
+👄 Right mouth
+from uniface.detection import RetinaFace
 
-The iris regions can be accessed separately:
-
-left_iris = result.landmarks[IRIS_LEFT]
-right_iris = result.landmarks[IRIS_RIGHT]
-
-Each iris contains five points, including a center point.
-
-For example:
-
-left_pupil = result.landmarks[
-    IRIS_LEFT
-][0, :2]
-V1_468 vs V2_478
-
-The two Face Mesh variants are closely related.
-
-V1_468
-
-468 points
-3D coordinates
-Smaller input resolution
-Lower computational cost
-Suitable for general facial mesh applications
-
-V2_478
-
-478 points
-3D coordinates
-Includes iris landmarks
-Higher input resolution
-More computationally demanding
-Useful when eye and iris geometry is required
-
-If iris tracking is not necessary, V1_468 is generally the simpler option.
-
-MediaPipe-Compatible Pipeline
-
-Face Mesh can be combined with BlazeFace to reproduce the detector + mesh workflow commonly used by MediaPipe.
-
-from uniface import BlazeFace, FaceMesh
-
-detector = BlazeFace()
-mesher = FaceMesh()
+detector = RetinaFace()
 
 faces = detector.detect(image)
 
-results = mesher.predict(
+if faces:
+
+    landmarks_5 = faces[0].landmarks
+
+    print(landmarks_5.shape)
+    # (5, 2)
+
+    left_eye = landmarks_5[0]
+    right_eye = landmarks_5[1]
+    nose = landmarks_5[2]
+    left_mouth = landmarks_5[3]
+    right_mouth = landmarks_5[4]
+
+⚠️ BlazeFace is different: it returns 6 MediaPipe keypoints instead of 5.
+
+🎨 Landmark Visualization
+import cv2
+
+def draw_landmarks(
     image,
-    faces
+    landmarks,
+    color=(0, 255, 0),
+    radius=2
+):
+
+    for x, y in landmarks.astype(int):
+
+        cv2.circle(
+            image,
+            (x, y),
+            radius,
+            color,
+            -1
+        )
+
+    return image
+Usage
+landmarks = landmarker.get_landmarks(
+    image,
+    face.bbox
 )
 
-This combination is useful when compatibility with MediaPipe-style face-mesh processing is required.
-
-Face Mesh Visualization
-
-UniFace provides a drawing utility for visualizing the mesh.
-
-from uniface.draw import draw_mesh
-Partial Mesh
-draw_mesh(
-    image,
-    results[0].landmarks
+image_with_landmarks = draw_landmarks(
+    image.copy(),
+    landmarks
 )
 
-This provides a lightweight visualization of the facial contours and points.
-
-Full Mesh
-draw_mesh(
-    image,
-    results[0].landmarks,
-    mode="full"
+cv2.imwrite(
+    "landmarks.jpg",
+    image_with_landmarks
 )
+👁️ Eye Aspect Ratio — Blink Detection
 
-The full mode draws the complete facial tessellation.
-
-Points Only
-draw_mesh(
-    image,
-    results[0].landmarks,
-    mode="points"
-)
-
-For real-time video, partial or points modes are preferable because the full mesh requires a large number of line-drawing operations.
-
-Face Mesh Processing Notes
-
-The Face Mesh pipeline follows a MediaPipe-style region-of-interest strategy.
-
-Important details include:
-
-The face crop is based on a square region around the detected face.
-The region is enlarged relative to the detector bounding box.
-The crop can be rotated according to the eye line.
-Passing Face objects allows automatic roll normalization.
-Passing raw bounding boxes produces an axis-aligned crop.
-The margin parameter can be adjusted when the mesh is too close to the image boundary.
-roi_from_box and warp_roi are available for custom ROI processing.
-
-The returned score represents face presence rather than a traditional recognition confidence score. Therefore, it should not be interpreted as an identity-confidence value.
-
-Using Landmarks for Face Alignment
-
-Facial landmarks can be used to normalize faces before recognition.
-
-For example, the five detector landmarks can be passed directly to the alignment utility:
-
-from uniface.face_utils import face_alignment
-
-aligned_face, inverse_matrix = face_alignment(
-    image,
-    faces[0].landmarks
-)
-
-The output contains:
-
-aligned_face
-    ↓
-112 × 112 normalized face
-
-inverse_matrix
-    ↓
-Transformation used to map coordinates
-back to the original image
-Blink Detection with Eye Landmarks
-
-Detailed landmarks can also be used to estimate whether an eye is open or closed.
-
-One common approach is the Eye Aspect Ratio (EAR).
+Facial landmarks can also be used to detect eye closure and blinking.
 
 import numpy as np
 
 def eye_aspect_ratio(eye_landmarks):
-    """Calculate the eye aspect ratio."""
 
-    vertical_1 = np.linalg.norm(
-        eye_landmarks[1] - eye_landmarks[5]
+    v1 = np.linalg.norm(
+        eye_landmarks[1] -
+        eye_landmarks[5]
     )
 
-    vertical_2 = np.linalg.norm(
-        eye_landmarks[2] - eye_landmarks[4]
+    v2 = np.linalg.norm(
+        eye_landmarks[2] -
+        eye_landmarks[4]
     )
 
-    horizontal = np.linalg.norm(
-        eye_landmarks[0] - eye_landmarks[3]
+    h = np.linalg.norm(
+        eye_landmarks[0] -
+        eye_landmarks[3]
     )
 
-    return (
-        vertical_1 + vertical_2
-    ) / (2.0 * horizontal)
+    ear = (v1 + v2) / (2.0 * h)
 
-Using the 106-point model:
+    return ear
+
+Example:
 
 left_eye = landmarks[63:72]
 
 ear = eye_aspect_ratio(left_eye)
 
 if ear < 0.2:
-    print("Possible blink detected")
+    print("Eye closed / Blink detected")
+🧭 Head Pose Estimation
 
-The 0.2 value is only an example. In a real application, the threshold should be calibrated using the target camera and users.
-
-Head Pose Estimation
-
-Facial landmarks can also be combined with OpenCV's solvePnP() to estimate head orientation.
+Facial landmarks can also be used to estimate the orientation of the head.
 
 import cv2
 import numpy as np
@@ -464,13 +600,10 @@ def estimate_head_pose(
         landmarks[93]
     ], dtype=np.float64)
 
-    height, width = image_shape[:2]
+    h, w = image_shape[:2]
 
-    focal_length = width
-    center = (
-        width / 2,
-        height / 2
-    )
+    focal_length = w
+    center = (w / 2, h / 2)
 
     camera_matrix = np.array([
         [focal_length, 0, center[0]],
@@ -478,148 +611,21 @@ def estimate_head_pose(
         [0, 0, 1]
     ], dtype=np.float64)
 
-    dist_coeffs = np.zeros(
-        (4, 1)
+    dist_coeffs = np.zeros((4, 1))
+
+    success, rotation_vector, translation_vector = cv2.solvePnP(
+        model_points,
+        image_points,
+        camera_matrix,
+        dist_coeffs
     )
 
-    success, rotation_vector, translation_vector = (
-        cv2.solvePnP(
-            model_points,
-            image_points,
-            camera_matrix,
-            dist_coeffs
-        )
-    )
-
-    return (
-        rotation_vector,
-        translation_vector
-    )
-
-This can be used as a starting point for applications such as:
-
-Head orientation tracking
-Driver monitoring
-Webcam interaction
-Attention estimation
-Human-computer interaction
-Visualizing 2D Landmarks
-
-For custom visualization, OpenCV can be used to draw each landmark directly onto the image.
-
-import cv2
-
-def draw_landmarks(
-    image,
-    landmarks,
-    color=(0, 255, 0),
-    radius=2
-):
-    """Render facial landmarks on an image."""
-
-    for x, y in landmarks.astype(int):
-        cv2.circle(
-            image,
-            (x, y),
-            radius,
-            color,
-            -1
-        )
-
-    return image
-
-Example:
-
-landmarks = landmarker.get_landmarks(
-    image,
-    face.bbox
+    return rotation_vector, translation_vector
+🧰 Available Landmarkers
+from uniface.constants import (
+    FaceMeshWeights,
+    PIPNetWeights
 )
-
-result = draw_landmarks(
-    image.copy(),
-    landmarks
-)
-
-cv2.imwrite(
-    "landmarks.jpg",
-    result
-)
-Connecting Facial Features
-
-For a more informative visualization, landmarks can be connected to form facial structures such as the jawline, eyebrows, and nose.
-
-def draw_landmark_connections(
-    image,
-    landmarks
-):
-    landmarks = landmarks.astype(int)
-
-    # Face contour
-    for i in range(32):
-        cv2.line(
-            image,
-            tuple(landmarks[i]),
-            tuple(landmarks[i + 1]),
-            (255, 255, 0),
-            1
-        )
-
-    # Left eyebrow
-    for i in range(33, 41):
-        cv2.line(
-            image,
-            tuple(landmarks[i]),
-            tuple(landmarks[i + 1]),
-            (0, 255, 0),
-            1
-        )
-
-    # Right eyebrow
-    for i in range(42, 50):
-        cv2.line(
-            image,
-            tuple(landmarks[i]),
-            tuple(landmarks[i + 1]),
-            (0, 255, 0),
-            1
-        )
-
-    # Nose
-    for i in range(51, 62):
-        cv2.line(
-            image,
-            tuple(landmarks[i]),
-            tuple(landmarks[i + 1]),
-            (0, 0, 255),
-            1
-        )
-
-    # Landmark points
-    for x, y in landmarks:
-        cv2.circle(
-            image,
-            (x, y),
-            2,
-            (0, 255, 255),
-            -1
-        )
-
-    return image
-Choosing the Right Landmark Model
-
-The different models are intended for different levels of facial analysis:
-
-Requirement	Recommended Model
-Basic face alignment	5-point detector landmarks
-Detailed 2D facial features	Landmark106
-High-resolution 2D landmarks	PIPNet 98
-Traditional 68-point layout	PIPNet 68
-Dense 3D face geometry	FaceMesh 468
-3D geometry + iris tracking	FaceMesh 478
-Lightweight real-time processing	5-point landmarks / FaceMesh V1
-Available Landmarker Classes
-
-All supported landmark models can be imported from the following modules:
 
 from uniface.landmark import (
     FaceMesh,
@@ -627,58 +633,41 @@ from uniface.landmark import (
     PIPNet
 )
 
-from uniface.constants import (
-    FaceMeshWeights,
-    PIPNetWeights
-)
-106-point model
+# 🔵 106-point model
 landmarker = Landmark106()
-98-point PIPNet
+
+# 🟢 98-point PIPNet
 landmarker = PIPNet()
-68-point PIPNet
+
+# 🟡 68-point PIPNet
 landmarker = PIPNet(
     model_name=PIPNetWeights.DW300_CELEBA_68
 )
-468-point Face Mesh
+
+# 🔴 468-point FaceMesh
 landmarker = FaceMesh()
-478-point Face Mesh with iris landmarks
+
+# 🟣 478-point FaceMesh + Iris
 landmarker = FaceMesh(
     model_name=FaceMeshWeights.V2_478
 )
-Typical Landmark Pipeline
+🚀 Complete Face Analysis Pipeline
+📷 Input Image
+      ↓
+🔍 Face Detection
+      ↓
+📍 Facial Landmarks
+      ↓
+🎯 Face Alignment
+      ↓
+🧠 Face Recognition
+      ↓
+🔢 512-D Embedding
+      ↓
+🗃️ Face Database
+      ↓
+🔎 Face Search / Verification
+      ↓
+✅ Match / ❌ No Match
 
-A complete landmark-processing workflow can be summarized as:
-
-Input Image
-     ↓
-Face Detection
-     ↓
-Bounding Box
-     ↓
-Landmark Model
-     ↓
-Facial Keypoints
-     ↓
-Feature Analysis
-     ↓
-Application
-
-For example:
-
-Image
-  ↓
-RetinaFace / SCRFD
-  ↓
-Face Bounding Box
-  ↓
-Landmark106 / PIPNet / FaceMesh
-  ↓
-Facial Landmarks
-  ↓
- ┌───────────────┬───────────────┬───────────────┐
- ↓               ↓               ↓
-Alignment     Blink Detection   Head Pose
- ↓
-Face Recognition
-
-This structure allows the landmark module to serve as a common foundation for face recognition, alignment, facial analysis, eye tracking, head-pose estimation, and other computer-vision applications.
+This provides a complete pipeline from input image → face detection → landmarks → alignment → embedding → database search → face verification.
