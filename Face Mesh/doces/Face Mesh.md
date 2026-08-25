@@ -49,6 +49,16 @@ if results:
 
     print(result.landmarks.shape)  # (478, 3)
 
+
+<img width="2687" height="3356" alt="image" src="https://github.com/user-attachments/assets/fb046f4e-b9d2-491f-8c06-2c3e9453cf45" />
+
+
+
+
+
+
+    
+
     🔍 Access the Iris Points
     from uniface.constants import (
     IRIS_LEFT,
