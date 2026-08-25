@@ -1,6 +1,9 @@
 🧑‍💻 Face Recognition & Landmarks
 
-UniFace provides a complete face analysis pipeline, including face detection, facial landmarks, face alignment, face recognition, embeddings, face verification, and face search.
+UniFace provides a complete face analysis pipeline, including face detection, facial landmarks, face alignment, face recognition, embeddings, face verification, and face search
+
+<img width="1744" height="682" alt="image" src="https://github.com/user-attachments/assets/af842269-0ad4-44db-85ee-cc9110bf86fd" />
+
 
 🔍 Face Recognition
 
