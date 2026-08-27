@@ -2,6 +2,8 @@ Attributes
 FaceAttribNet reads five independent binary states per face: left and right eye openness, eyeglasses, face mask, and sunglasses
 
 
+<img width="1762" height="574" alt="image" src="https://github.com/user-attachments/assets/2c989ade-1bba-4355-900c-07ece10c1fc5" />
+
 
 
 
